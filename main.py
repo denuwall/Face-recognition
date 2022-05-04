@@ -35,11 +35,14 @@ print(massNames)
 def findEncodings(images):  # добавляем фото в функцию (отвечает за декодинг фото)
     encodeList = []  # инициализируем лист в который в последствии помещаем декодированные фото
     for frame in images:
-        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)  # обрабатываем фото переводя в удобный формат
-        encode = fr.face_encodings(frame)[0]  # переменная хранит декодинг данные
+        # обрабатываем фото переводя в удобный формат
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        # переменная хранит декодинг данные
+        encode = fr.face_encodings(frame)[0]
         encodeList.append(encode)  # добавляем в массив обработанное фото
     return encodeList  # возвращаем массив
 
+encodeListKnown = findEncodings(images)
 
 # для удобства хранения
 def markAttendance(name):  # выводим данные в csv файл
@@ -55,69 +58,84 @@ def markAttendance(name):  # выводим данные в csv файл
             f.writelines(f'\n{name}, {dtString}')
 
 
-encodeListKnown = findEncodings(images)  # отвечает за обработанные фото
+# encodeListKnown = findEncodings(images)  # отвечает за обработанные фото
 print("Декодирование закончено")
 
 
 def gen_frames(cam):
     process_this_frame = True
     while True:
-        success, frame = cap[int(cam)].read()  # переменные отвечают за 1 кадр из видео
+        # переменные отвечают за 1 кадр из видео
+        success, frame = cap[int(cam)].read()
         if not success:
             break
         else:
             if process_this_frame:
-                small_frame = cv.resize(frame, (0, 0), None, 0.25, 0.25)  # принимает подготовленный файл для обработки
+                # принимает подготовленный файл для обработки
+                small_frame = cv.resize(frame, (0, 0), None, 0.25, 0.25)
                 small_frame = cv.cvtColor(small_frame, cv.COLOR_BGR2RGB)
 
-                facesCurFrame = fr.face_locations(small_frame)  # поиск всех лиц
+                facesCurFrame = fr.face_locations(
+                    small_frame)  # поиск всех лиц
                 encodeCurFrame = fr.face_encodings(small_frame, facesCurFrame)
 
                 if (len(facesCurFrame) == 0):
                     ret, buffer = cv.imencode('.jpg', frame)
                     frame = buffer.tobytes()
                     yield (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-                for encodeFace, faceLoc in zip(encodeCurFrame, facesCurFrame):  # цикл для распознования
-                    matches = fr.compare_faces(encodeListKnown, encodeFace)  # отвечает за уже известное лицо
-                    faceDis = fr.face_distance(encodeListKnown, encodeFace)  # вероятность
+                # цикл для распознования
+                for encodeFace, faceLoc in zip(encodeCurFrame, facesCurFrame):
+                    # отвечает за уже известное лицо
+                    matches = fr.compare_faces(encodeListKnown, encodeFace)
+                    faceDis = fr.face_distance(
+                        encodeListKnown, encodeFace)  # вероятность
                     # print(faceDis)
-                    matchIndex = np.argmin(faceDis)  # принимаем индексы всех имен
-
+                    # принимаем индексы всех имен
+                    matchIndex = np.argmin(faceDis)
                     if matches[matchIndex]:  # проверика на имеющиеся в базе лица
                         name = massNames[matchIndex]
                         print(f"{name} доступ разрешен")
                         y1, x2, y2, x1 = faceLoc  # рисуем рамку
                         y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-                        cv.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 1)
-                        cv.rectangle(frame, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv.FILLED)
-                        cv.putText(frame, name, (x1 + 6, y2 - 6), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1)
+                        cv.rectangle(frame, (x1, y1), (x2, y2),
+                                     (0, 255, 255), 1)
+                        cv.rectangle(frame, (x1, y2 - 35),
+                                     (x2, y2), (0, 255, 0), cv.FILLED)
+                        cv.putText(frame, name, (x1 + 6, y2 - 6),
+                                   cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1)
                         markAttendance(name)
                         ret, buffer = cv.imencode('.jpg', frame)
                         frame = buffer.tobytes()
                         yield (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
                     else:
-                        filename = 'KnowFaces/face' + time.strftime + '.jpg'
+                        filename = 'UnKnowFaces/'+ time.strftime("%d.%m.%Y.%H.%M", time.localtime()) + '.jpg'
                         cv.imwrite(filename, frame)
                         print("Лицо сохранено")
                         y1, x2, y2, x1 = faceLoc  # рисуем рамку
                         y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-                        cv.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
-                        cv.rectangle(frame, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv.FILLED)
-                        cv.putText(frame, "Неопознан", (x1 + 6, y2 - 6), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-                        playsound('sound.mp3')
-                        buffer = cv.imencode('.jpg', frame)
+                        cv.rectangle(frame, (x1, y1), (x2, y2),
+                                     (0, 255, 255), 2)
+                        cv.rectangle(frame, (x1, y2 - 35),
+                                     (x2, y2), (0, 255, 0), cv.FILLED)
+                        cv.putText(frame, "Неопознан", (x1 + 6, y2 - 6),
+                                   cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+                        try:
+                            playsound('sound.mp3')
+                        except:
+                            pass
+                        ret, buffer = cv.imencode('.jpg', frame)
                         frame = buffer.tobytes()
                         yield (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             else:
                 try:
                     frame = buffer.tobytes()
                     ret, buffer = cv.imencode('.jpg', frame)
                     yield (b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                           b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
                 except Exception as e:
                     pass
             process_this_frame = not process_this_frame
@@ -135,24 +153,50 @@ def archive():
             if(i == 0):
                 archive[i] = "<tr><td>Имя</td><td>Время</td></tr>"
                 continue
-            if(archive[i] == "\n"): 
+            if(archive[i] == "\n"):
                 continue
             temp = archive[i].split()
-            archive[i] = "<tr><td>" + temp[0].replace(",", "") + "</td><td>" + temp[1].replace("_", " - ") + "</td></tr>"
+            archive[i] = "<tr><td>" + temp[0].replace(
+                ",", "") + "</td><td>" + temp[1].replace("_", " - ") + "</td></tr>"
         return render_template('archive.html', archive=archive)
+
 
 @app.route('/faces')
 def faces():
     facesPath = str(pathlib.Path().resolve()) + "\\" + path
-    onlyfiles = [f for f in os.listdir(facesPath) if isfile(join(facesPath, f))]
-    for i in range(0, len(onlyfiles)):
-        with open(facesPath + "\\" + onlyfiles[i], "rb") as image_file:
-            onlyfiles[i] = str(base64.b64encode(image_file.read())).replace("b'", "").replace("'", "")
-    return render_template('faces.html', files=onlyfiles, as_attachment=True)
+    UnKnowFacesPath = str(pathlib.Path().resolve()) + "\\UnKnowFaces"
+    Knowfiles = [f for f in os.listdir(
+        facesPath) if isfile(join(facesPath, f))]
+    KnowfacesNames = [f for f in os.listdir(
+        facesPath) if isfile(join(facesPath, f))]
+    UnKnowfiles = [f for f in os.listdir(
+        UnKnowFacesPath) if isfile(join(UnKnowFacesPath, f))]
+    UnKnowfacesNames = [f for f in os.listdir(
+        UnKnowFacesPath) if isfile(join(UnKnowFacesPath, f))]
+    for i in range(0, len(Knowfiles)):
+        with open(facesPath + "\\" + Knowfiles[i], "rb") as image_file:
+            Knowfiles[i] = str(base64.b64encode(image_file.read())).replace(
+                "b'", "").replace("'", "")
+    for i in range(0, len(UnKnowfiles)):
+        with open(UnKnowFacesPath + "\\" + UnKnowfiles[i], "rb") as image_file:
+            UnKnowfiles[i] = str(base64.b64encode(image_file.read())).replace(
+                "b'", "").replace("'", "")
+    return render_template(
+        'faces.html',
+        Knowfiles=Knowfiles,
+        UnKnowfiles=UnKnowfiles,
+        KnowfacesNames=KnowfacesNames,
+        UnKnowfacesNames=UnKnowfacesNames,
+        lenKnow=len(KnowfacesNames),
+        lenUnKnow=len(UnKnowfacesNames),
+        as_attachment=True
+    )
+
 
 @app.route('/video_feed/<cam>')
 def video_feed_with_cam_select(cam):
     return Response(gen_frames(cam), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 @app.route('/video_feed')
 def video_feed():
