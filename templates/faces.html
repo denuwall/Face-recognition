@@ -10,11 +10,23 @@
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>Проводник</title>
     <script language="javascript" type="text/javascript">
-      function add(idOfTextBox){
-        var newName = document.getElementById(idOfTextBox).value;
-        if(newName.length > 0){
-          newName = newName + ".jpg";
-        }
+      function rename(oldname){
+        var newName = document.getElementById(oldname+"TextBox").value;
+        const response = fetch(window.location.href.slice(0, -5) + "archiveMove/" + oldname + "/" + newName, {
+          method: 'GET',
+          headers: {'Content-Type': 'application/json'},
+        }).then((res) => {
+          location.reload(true);
+        });
+      }
+
+      function deleteFile(Name){
+        const response = fetch(window.location.href.slice(0, -5) + "deleteFromArchive/" + Name, {
+          method: 'GET',
+          headers: {'Content-Type': 'application/json'},
+        }).then((res) => {
+          location.reload(true);
+        });
       }
     </script>
 </head>
@@ -76,7 +88,8 @@
                       </div>
                       <input type="text" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm" id="{{UnKnowfacesNames[i]}}TextBox">
                     </div>
-                    <a onclick="add('{UnKnowfacesNames[i]}')" class="btn btn-primary">Добавить</a>
+                    <a onclick="rename('{{UnKnowfacesNames[i]}}')" class="btn btn-primary">Добавить</a>
+                    <button onclick="deleteFile('{{UnKnowfacesNames[i]}}')" type="button" class="btn btn-danger">Удалить</button>
                   </div>
                 {% endfor %}
                 </div>

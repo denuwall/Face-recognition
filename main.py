@@ -1,7 +1,9 @@
 import base64
 from genericpath import isfile
+import json
 from ntpath import join
 import pathlib
+import sys
 import numpy as np
 import face_recognition as fr
 import cv2 as cv
@@ -191,6 +193,21 @@ def faces():
         lenUnKnow=len(UnKnowfacesNames),
         as_attachment=True
     )
+
+@app.route('/archiveMove/<old_name>/<new_name>')
+def move_name(old_name, new_name):
+    facesPath = str(pathlib.Path().resolve()) + "\\" + path
+    UnKnowFacesPath = str(pathlib.Path().resolve()) + "\\UnKnowFaces"
+    os.replace(UnKnowFacesPath + "\\" + old_name, facesPath + "\\" + new_name + ".jpg")
+    return Response(json.dumps({"success": True}))
+
+@app.route('/deleteFromArchive/<name>')
+def delete_from_archive(name):
+    UnKnowFacesPath = str(pathlib.Path().resolve()) + "\\UnKnowFaces"
+    if os.path.exists(UnKnowFacesPath + "\\" + name):
+        os.remove(UnKnowFacesPath + "\\" + name)
+    else:
+        pass
 
 
 @app.route('/video_feed/<cam>')
